@@ -53,6 +53,30 @@ made.
 
 ## Deep-Dive
 
+### Raspberry Pi Pico
+
+![Raspberry Pi Pico](imgs/pico-board3.png)
+
+The Raspberry Pi Pico is the latest product by the Raspberry Pi foundation. It
+is a low-cost microcontroller board (<£4) which features the new _RP2040_ chip
+by Raspberry Pi.
+
+The RP2040 is built on a "high-clocked" dual-core Cortex M0+ processor, making
+it a "remarkably" good platform for endpoint AI. Find out more about the Pico
+and the RP2040 from James Adams, COO, Raspberry Pi on arm.com
+[here](https://www.arm.com/blogs/blueprint/raspberry-pi-rp2040).
+
+### Tensorflow Lite for Microcontrollers
+
+> TensorFlow Lite for Microcontrollers is designed to run machine learning models
+> on microcontrollers and other devices with only few kilobytes of memory. The
+> core runtime just fits in 16 KB on an Arm Cortex M3 and can run many basic
+> models. It doesn't require operating system support, any standard C or C++
+> libraries, or dynamic memory allocation.
+Learn more [here](https://www.tensorflow.org/lite/microcontrollers).
+
+### Code
+
 We will now go through the changes made to the Tensorflow `micro_speech` example
 to allow it to work with the Pico. The Tensorflow team have already done a port
 of Tensorflow Lite Micro for the Pico which can be found
@@ -64,7 +88,6 @@ what connects a device's microphone hardware to the application, and the
 `command_responder.cc` takes the model output and produces an output to say
 which word was suggested.
 
-### Code
 
 #### Audio Provider
 
