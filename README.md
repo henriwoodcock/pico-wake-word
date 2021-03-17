@@ -1,5 +1,7 @@
 # TinyML Wake-Word Detection on Raspberry Pi Pico
 
+![gif of yes and no](images/yes_no_gif.gif)
+
 This application implements the wake word example from
 [Tensorflow Lite for Microcontrollers](https://www.tensorflow.org/lite/microcontrollers)
 on the Raspberry Pi Pico.
