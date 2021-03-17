@@ -1,41 +1,73 @@
 # TinyML Wake-Word Detection on Raspberry Pi Pico
 
+This application implements the wake word example from
+[Tensorflow Lite for Microcontrollers](https://www.tensorflow.org/lite/microcontrollers)
+on the Raspberry Pi Pico.
+
 The wake word example shows how to run a 20 kB neural network that can detect 2
-keywords, "yes" and "no". More information about this example can be found on
+keywords, "yes" and "no". More information about this example is available on
 the [Tensorflow Lite Micro examples folder](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/micro/examples/micro_speech).
+
+We use as input an electret microphone to detect the words "yes" or "no" and
+turn the on-device LED on and off in response.
 
 ## Contents
 
+- [Overview](#overview)
+- [Before You Begin](#before-you-begin)
+    - [Hardware Requirements](#hardware-requirements)
+    - [Hardware Setup](#hardware-setup)
+        - [Assembly](#assembly)
+        - [Wiring](#wiring)
+    - [Software Setup](#software-setup)
+- [Wake-Word uf2 file](#wake-word-uf2-file)
+- [Build with Docker](#build-with-docker)
+- [Build Yourself](#build-yourself)
+- [Making Your Own Changes](#making-your-own-changes)
+- [Contributions](#contributions)
+- [License](#license)
+
 ## Overview
 
+The `micro_speech` app for the Raspberry Pi Pico is an adaptation taken from
+the "Wake-Word" example on Tensorflow Lite for Microcontrollers. Pete Warden's
+and Daniel Situnayake's _[TinyML](https://tinymlbook.com)_ book gives an
+in-depth look into how this model works and how to train your own. This
+repository ports the example to work on the Pico.
+
+The application works by listening to the microphone and processing the data
+before sending it the model to be analyzed. The application takes advantage of
+Pico's ADC and DMA to listen for samples, saving the CPU to perform the complex
+analysis.
+
+The Pico does not come with an onboard microphone. For this application, we use
+the Adafruit Electret Microphone Amplifier breakout.
 
 ## Before You Begin
 
+We will now go through the setup of the project. This section contains three
+sub-sections, hardware requirements, hardware setup and software setup.
+
 ### Hardware Requirements
 
-- 1x Raspberry Pi Pico
-- 1x Adafruit Electret Microphone with adjustable gain
-- 1x MicroUSB to USB cable
+- 1x [Raspberry Pi Pico](https://www.raspberrypi.org/products/raspberry-pi-pico/)
+- 1x [Electret Microphone Amplifier - MAX4466 with Adjustable Gain](https://www.adafruit.com/product/1063)
+- 1x Micro USB cable
 - 3x Jumper wires
+- 2x 1x20 male header pins (for the Pico)
+- 1x 1x3 male header pins (for the microphone)
 
-### Setup
+### Hardware Setup
 
-- Setup the Raspberry Pi Pico SDK by following steps on [GitHub](https://github.com/raspberrypi/pico-sdk).
-- Git clone this repository.
-- (Alternatively) use the Dockerfile to setup and build the application.
-
-## Assembly and Wiring
-
-### Assembly
+#### Assembly
 
 1. Solder headers onto your Raspberry Pi Pico
 2. Solder headers onto your Adafruit Electret Microphone
 
-### Wiring
+#### Wiring
 
-The electret microphone breakout is a analog, this means we can connect it to
-one of the ADC pins on the Raspberry Pi Pico. The following connections are to
-made.
+The electret microphone breakout is an analog input, meaning we can connect it
+to one of the ADC pins on the Raspberry Pi Pico. Make the following connections:
 
 | __Adafruit Electret Microphone__ | __Raspberry Pi Pico__ |
 |------------------------------|-------------------|
@@ -45,259 +77,222 @@ made.
 
 ![The Raspberry Pi Pico](images/pico_wake_word_bb.png)
 
+### Software Setup
+
+The final step before using this application is to set up the software stack
+(CMake and compilers). The easiest way to do this is to follow the steps on the
+Raspberry Pi Pico SDK [repository](https://github.com/raspberrypi/pico-sdk).
+Once done you can test your tolchain setup by running some of the examples
+found in the Pico examples
+[repository](https://github.com/raspberrypi/pico-examples).
+
+Alternatively, you can use the provided Dockerfile if you would prefer to build
+your application in an isolated environment.
+
+You can now clone this repository.
+
+```
+git clone https://github.com/henriwoodcock/pico-wake-word.git
+```
+
 ## Wake-Word uf2 file
+
+The easiest way to get started on this application is to use the provided `.uf2`
+file. Doing this means you will not have to build the application yourself. You
+can download the `.uf2` [here](build/micro_speech.uf2). Click on download, and
+your browser should start downloading a file called `micro_speech.uf2`.
+
+To install this onto your Pico, you need to do the following:
+
+1. Push and hold the BOOTSEL button and plug your Pico into the USB port of
+your Raspberry Pi or another computer.
+2. It will mount as a Mass Storage Device called RPI-RP2.
+3. Drag and drop the `micro_speech.uf2` binary onto the RPI-RP2 volume.
+4. Pico will reboot, and the built-in LED should start blinking.
+
+You can access the output on your Pico by viewing the serial console. There are
+many applications for this. Raspberry Pi recommends using `minicom`. However,
+if you are on macOS, you can use the in-built `screen`.
+
+You first need to find the name of your Pico.
+
+On macOS:
+
+```
+ls /dev/cu*
+```
+
+On Linux:
+
+```
+ls /dev/tty*
+```
+
+Copy your device name (hint: if you are unsure which device is your Pico:
+unplug your Pico, re-run the command and then plug your Pico back in, after
+re-running the command once more, the new device will be your Pico) and then
+run the following:
+
+
+Using `screen`:
+
+```
+screen {device_name} 115200
+```
+
+Using `minicom`:
+
+```
+minicom -b 115200 -o -D {device_name}
+```
+
+You should now be able to see an output similar to the following:
+
+![Screen showing the output from the Pico](images/output_screenshot.png)
+
 
 ## Build with Docker
 
+Before building with the Docker image, you first need to clone to the Pico-SDK.
+The docker file will copy the SDK into the image during the building of the
+image.
+
+1. Change directory into this repository
+
+    ```
+    cd pico-wake-word
+    ```
+
+2. Git clone the Pico SDK
+
+    ```
+    git clone --recursive https://github.com/raspberrypi/pico-sdk.git pico-sdk
+    ```
+
+3. Build the docker image
+
+    ```
+    docker build -t pico-wake-word:1.0 .
+    ```
+
+You can now run a docker container from the docker image and mount the USB to
+your docker container. Alternatively, you can copy the files from the docker
+container onto your host machine. To do this second option, you can run the
+following:
+
+```
+docker create -ti --name dummy pico-wake-word:1.0 bash
+docker cp dummy:/pico/build/micro_speech/micro_speech.uf2 bin/micro_speech.uf2
+docker rm -fv dummy
+```
+
 ## Build Yourself
 
-## Deep-Dive
+With the Pico-SDK setup on your machine, building the application is the same as
+building any other Pico application.
 
-### Raspberry Pi Pico
+1. Change directory into this repository
 
-![Raspberry Pi Pico](imgs/pico-board3.png)
+    ```
+    cd pico-wake-word
+    ```
 
-The Raspberry Pi Pico is the latest product by the Raspberry Pi foundation. It
-is a low-cost microcontroller board (<£4) which features the new _RP2040_ chip
-by Raspberry Pi.
+2. Make a build directory
 
-The RP2040 is built on a "high-clocked" dual-core Cortex M0+ processor, making
-it a "remarkably" good platform for endpoint AI. Find out more about the Pico
-and the RP2040 from James Adams, COO, Raspberry Pi on arm.com
-[here](https://www.arm.com/blogs/blueprint/raspberry-pi-rp2040).
+    ```
+    mkdir build
+    ```
 
-### Tensorflow Lite for Microcontrollers
+3. Generate the Makefiles
 
-> TensorFlow Lite for Microcontrollers is designed to run machine learning models
-> on microcontrollers and other devices with only few kilobytes of memory. The
-> core runtime just fits in 16 KB on an Arm Cortex M3 and can run many basic
-> models. It doesn't require operating system support, any standard C or C++
-> libraries, or dynamic memory allocation.
-Learn more [here](https://www.tensorflow.org/lite/microcontrollers).
+    ```
+    cd build
+    cmake ..
+    ```
 
-### Code
+4. Finally run the Makefile
 
-We will now go through the changes made to the Tensorflow `micro_speech` example
-to allow it to work with the Pico. The Tensorflow team have already done a port
-of Tensorflow Lite Micro for the Pico which can be found
-[here](https://github.com/raspberrypi/pico-tflmicro).
+    ```
+    make -j8
+    ```
 
-The two files that need to be edited for the `micro_speech` application are the
-`audio_provider.cc` and the `command_responder.cc`. The `audio_provider.cc` is
-what connects a device's microphone hardware to the application, and the
-`command_responder.cc` takes the model output and produces an output to say
-which word was suggested.
+Once done, your `micro_speech.uf2` file is located in `build/micro_speech`.
 
+## Making Changes
 
-#### Audio Provider
+If you would like to use a different microphone, different LED, use other pins
+on Pico or change the audio quality, you will need to know how to make these
+changes to the application.
 
-The `audio_provider.cc` works by continuously collecting data from the
-microphone and saving the updated data into an array. This means collecting
-data while other parts of the code are running, so the current audio can be
-analysed while new audio is collected. We need to implement two functions for
-this to work with the rest of the application, these are `GetAudioSamples()`
-and `LatestAudioTimestamp`.
+### Changing the LED
 
-How this works:
-- DMA to collect data of CPU
-- Interrupt function to clean up data and put into ring buffer
-- Ring buffer which is an array which keeps updating
-
-To do this, we first make a function, `setup()`, this initializes the ADC,
-the DMA and an interrupt. For more examples on the Pico's DMA and ADC, please
-take a look at the [Pico-Examples](https://github.com/raspberrypi/pico-examples)
-repository.
-
-Lets break down this function, the first step is setting up the ADC:
+The LED settings can be found in `micro_speech/rp2/command_responder.cc`. To
+change the LED to a different pin (instead of the onboard LED), change the line:
 
 ```cpp
-#define CLOCK_DIV 3000
-
-adc_gpio_init(26 + CAPTURE_CHANNEL);
-adc_init();
-adc_select_input(CAPTURE_CHANNEL);
-adc_fifo_setup(
-	 true,    // Write each completed conversion to the sample FIFO
-	 true,    // Enable DMA data request (DREQ)
-	 1,       // DREQ (and IRQ) asserted when at least 1 sample present
-	 false,   // We won't see the ERR bit because of 8 bit reads; disable.
-	 false     // Shift each sample to 8 bits when pushing to FIFO
-	 );
-
-// set sample rate
-adc_set_clkdiv(CLOCK_DIV);
+#define LED_PIN 25
 ```
 
-The final line sets the rate at which data is collected from the ADC into the
-FIFO. This is based on the 48MHz ADC clock. Because the `micro_speech` model
-expects 16KHz input audio, it is important we are sampling at that rate.
-
-With the ADC setup we can now setup the DMA to transfer the data from the ADC
-FIFO into an array. To do this we claim a DMA channel and set the DMA to read
-a set amount caled `NSAMP` from the ADC FIFO before completing. We do not set a
-write location at this step as we do this during the callback.
+To change the functionality of the LED, edit the `if-else` section:
 
 ```cpp
-#define NSAMP 1024
-
-uint dma_chan = dma_claim_unused_channel(true);
-cfg = dma_channel_get_default_config(dma_chan);
-
-// Reading from constant address, writing to incrementing byte addresses
-channel_config_set_transfer_data_size(&cfg, DMA_SIZE_16);
-channel_config_set_read_increment(&cfg, false);
-channel_config_set_write_increment(&cfg, true);
-
-// Pace transfers based on availability of ADC samples
-channel_config_set_dreq(&cfg, DREQ_ADC);
-
-dma_channel_configure(dma_chan, &cfg,
-		NULL,    // dst
-		&adc_hw->fifo,  // src
-		NSAMP,          // transfer count
-		false            // do no start immediately
-);
-```
-
-The last step is to create the interrupt callback and setup the callback to
-trigger when the DMA is complete. To do this we first create the callback
-function called `CaptureSamples()`.
-
-A lot of this function is taken from the Tensorflow `micro_speech` examples, so
-it can be helpful to get a breif understanding before reading this function.
-
-We start of by defining a large array (the ring buffer), a smaller array
-(the buffer the DMA will write to) and a timestamp (used to calculate the
-index):
-
-```cpp
-uint16_t g_audio_sample_buffer[NSAMP]; // the dma write location
-constexpr int kAudioCaptureBufferSize = NSAMP * 16;
-int16_t g_audio_capture_buffer[kAudioCaptureBufferSize]; // the ring buffer
-volatile int32_t g_latest_audio_timestamp = 0;
-```
-
-We can now define the interrupt function. When the DMA is complete we want to
-calculate the index of the ring buffer to store the new data. This is done by
-converting the current timestamp into an index and using memory copy to
-transfer the bytes to that location.
-
-```cpp
-void CaptureSamples() {
-  // data processing
-  const int number_of_samples = NSAMP;
-  // Calculate what timestamp the last audio sample represents
-  const int32_t time_in_ms = g_latest_audio_timestamp + (number_of_samples / (kAudioSampleFrequency / 1000));
-  // Determine the index, in the history of all samples, of the last sample
-  const int32_t start_sample_offset = g_latest_audio_timestamp * (kAudioSampleFrequency / 1000);
-  // Determine the index of this sample in our ring buffer
-  const int capture_index = start_sample_offset % kAudioCaptureBufferSize;
-  // Read the data to the correct place in our buffer
-  memcpy(g_audio_capture_buffer + capture_index, (void *)g_audio_sample_buffer, sizeof(int16_t)*number_of_samples);
-
-  // Clear the interrupt request.
-  dma_hw->ints0 = 1u << dma_chan;
-  // Give the channel a new wave table entry to read from, and re-trigger it
-  dma_channel_set_write_addr(dma_chan, g_audio_sample_buffer, true);
-
-  g_latest_audio_timestamp = time_in_ms;
+if (found_command == "yes"){
+  //turn led on
+  gpio_put(LED_PIN, 1);
+}
+else {
+  //turn led off
+  gpio_put(LED_PIN, 0);
 }
 ```
 
-We now add the interrupt callback onto the dma channel.
+### Changing the ADC
+
+The ADC pin is defined in the `micro_speech/rp2/audio_provider.cc` script. To
+change the pin used in the application, change the lines:
 
 ```cpp
-dma_channel_set_irq0_enabled(dma_chan, true);
-// Configure the processor to run dma_handler() when DMA IRQ 0 is asserted
-irq_set_exclusive_handler(DMA_IRQ_0, CaptureSamples);
-irq_set_enabled(DMA_IRQ_0, true);
+#define ADC_PIN 26
+#define CAPTURE_CHANNEL 0
 ```
 
-Finally, with all this complete, we can now start the ADC and initialize the
-DMA by manually calling the `CaptureSamples()` function.
+### Changing the Audio Quality
+
+You can change the audio quality captured in the application. By default, the
+Tensorflow model expects a `16kHz` quality. `16kHz` means `16000` samples every
+second. To change this in the application, we need to change two variables.
+
+The first is the expected audio sample frequency. This is defined in
+`micro_speech/micro_features/micro_model_settings.h`. You want to change the
+value of the following variable:
 
 ```cpp
-adc_run(true); //start running the adc
-CaptureSamples();
+constexpr int kAudioSampleFrequency = 16000;
 ```
 
-#### Command Responder
-
-The `command_responder.cc` implements one function, `RespondToCommand`. In this
-implementation application will turn the onboard LED on when "yes" is said and
-turn the onboard LED off when "no" is said, as well as writing the output to the
-serial output.
-
-The first part to this is initializing the onboard LED:
+The second is the rate at which the ADC collects data from the microphone. This
+is defined in `micro_speech/rp2/audio_provider.cc`. You want to change the
+following line:
 
 ```cpp
-// led settings
-static bool is_initialized = false;
-const uint LED_PIN = 25;
-// if not initialized, setup
-if(!is_initialized) {
-  gpio_init(LED_PIN);
-  gpio_set_dir(LED_PIN, GPIO_OUT);
-  is_initialized = true;
-}
+#define CLOCK_DIV 3000 //16Khz
 ```
 
-With the onboard LED initialized, we can now use the input variables to handle
-the output. This has two steps, the first step is to log the output into the
-`error_reporter`:
+A quick introduction to the `CLOCK_DIV`. The `CLOCK_DIV` is used in the
+function `adc_set_clkdiv(CLOCK_DIV)`. The `CLOCK_DIV` defines the rate at which
+we sample data from the ADC. All timed by the ADC clock running at 48,000,000Hz.
+For example a `CLOCK_DIV` of 3000 means a sample is taken every (1 + 3000)
+cycles, which gives a sample rate of `48000000Hz / 3000 = 16000Hz or 16kHz`.
 
-```cpp
-if (is_new_command) {
-  TF_LITE_REPORT_ERROR(error_reporter, "Heard %s (%d) @%dms", found_command,
-                       score, current_time);
-}
-```
+## Contributions
 
-The next part to the output handler is to turn the LED on or off based on the
-heard command:
+There are possibly many ways to improve this work. Please feel free to make a
+PR for any improvements made.
 
-```cpp
-if (is_new_command) {
-  if (found_command == "yes"){
-    //turn led on
-    gpio_put(LED_PIN, 1);
-  }
-  else {
-    //turn led off
-    gpio_put(LED_PIN, 0);
-  }
-}
-```
+## License
 
-Putting this all together we get the following function:
-
-```cpp
-void RespondToCommand(tflite::ErrorReporter* error_reporter,
-                      int32_t current_time, const char* found_command,
-                      uint8_t score, bool is_new_command) {
-
-  // led settings
-  static bool is_initialized = false;
-  const uint LED_PIN = 25;
-  // if not initialized, setup
-  if(!is_initialized) {
-    gpio_init(LED_PIN);
-    gpio_set_dir(LED_PIN, GPIO_OUT);
-    is_initialized = true;
-  }
-
-  if (is_new_command) {
-    TF_LITE_REPORT_ERROR(error_reporter, "Heard %s (%d) @%dms", found_command,
-                         score, current_time);
-
-    if (found_command == "yes"){
-      //turn led on
-      gpio_put(LED_PIN, 1);
-    }
-    else {
-      //turn led off
-      gpio_put(LED_PIN, 0);
-    }
-  }
-}
-```
+This repository is licensed under Apache License 2.0. Tensorflow and
+CMSIS-NN are also both licensed under Apache License 2.0, Pico-SDK is licensed
+under BSD 3-Clause "New" or "Revised" License. For other libraries and packages
+used in this repository, please find the licenses in the
+`micro_speech/third_party` folder.
