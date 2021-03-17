@@ -5,6 +5,7 @@ For a deep dive of the code, please check my Hackster.io
 [post](https://www.hackster.io/hlsw/pico-wake-word-1e2372).
 
 ![gif of yes and no](images/yes_no_gif.gif)
+![setup image](images/setup.jpeg)
 
 This application implements the wake word example from
 [Tensorflow Lite for Microcontrollers](https://www.tensorflow.org/lite/microcontrollers)
