@@ -148,7 +148,7 @@ minicom -b 115200 -o -D {device_name}
 
 You should now be able to see an output similar to the following:
 
-![Screen showing the output from the Pico](images/output_screenshot.png)
+![Screen showing the output from the Pico](images/output_screen.png)
 
 
 ## Build with Docker
@@ -240,7 +240,7 @@ if (found_command == "yes"){
   //turn led on
   gpio_put(LED_PIN, 1);
 }
-else {
+else if (found_command == "no"){
   //turn led off
   gpio_put(LED_PIN, 0);
 }
