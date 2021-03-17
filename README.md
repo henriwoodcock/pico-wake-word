@@ -1,6 +1,9 @@
 # TinyML Wake-Word Detection on Raspberry Pi Pico
 >Wake-Word in less than $10!
 
+For a deep dive of the code, please check my Hackster.io
+[post](https://www.hackster.io/hlsw/pico-wake-word-1e2372).
+
 ![gif of yes and no](images/yes_no_gif.gif)
 
 This application implements the wake word example from
