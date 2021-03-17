@@ -1,4 +1,5 @@
 # TinyML Wake-Word Detection on Raspberry Pi Pico
+>Wake-Word in less than $10!
 
 ![gif of yes and no](images/yes_no_gif.gif)
 
