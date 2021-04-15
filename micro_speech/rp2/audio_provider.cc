@@ -32,12 +32,13 @@ namespace {
 dma_channel_config cfg;
 uint dma_chan;
 
-uint16_t g_audio_sample_buffer[NSAMP];
 // tflite micro settings
 bool g_is_audio_initialized = false;
 // An internal buffer able to fit 16x our sample size
-constexpr int kAudioCaptureBufferSize = NSAMP * 16;
-int16_t g_audio_capture_buffer[kAudioCaptureBufferSize];
+volatile int capture_index = 0;
+constexpr int kAudioCaptureBufferSize = NSAMP * 1;
+uint32_t g_audio_capture_buffer[2][kAudioCaptureBufferSize];
+int16_t g_audio_sample_buffer[kAudioCaptureBufferSize];
 // A buffer that holds our output
 int16_t g_audio_output_buffer[kMaxAudioSampleSize];
 // Mark as volatile so we can check in a while loop to see if
@@ -49,28 +50,28 @@ volatile int32_t g_latest_audio_timestamp = 0;
 //this next function is the dma interupt
 void CaptureSamples() {
   //reset the interrupt request first so you do not lose an interupt
+  // Clear the interrupt request.
+  dma_hw->ints0 = 1u << dma_chan;
+  // get the current capture index
+  int read_index = capture_index;
+  // get the next capture index to send the dma to start
+  capture_index = (capture_index + 1) % 2;
+  // Give the channel a new wave table entry to read from, and re-trigger it
+  dma_channel_transfer_to_buffer_now(dma_chan,
+    g_audio_capture_buffer[capture_index], kAudioCaptureBufferSize);
 
-
-  //printf("Interupt\n");
-  // reset the fifo
-  //adc_fifo_drain();
-
+  // take unsigned int to int
+  uint32_t* in = g_audio_capture_buffer[read_index];
+  int16_t* out = g_audio_sample_buffer;
+  for (int i = 0; i < kAudioCaptureBufferSize; i++) {
+    *out++ = ((uint16_t)*in++) - 0x7ff;
+  }
   // data processing
   const int number_of_samples = NSAMP;
   // Calculate what timestamp the last audio sample represents
-  const int32_t time_in_ms = g_latest_audio_timestamp + (number_of_samples / (kAudioSampleFrequency / 1000));
-  // Determine the index, in the history of all samples, of the last sample
-  const int32_t start_sample_offset = g_latest_audio_timestamp * (kAudioSampleFrequency / 1000);
-  // Determine the index of this sample in our ring buffer
-  const int capture_index = start_sample_offset % kAudioCaptureBufferSize;
-  // Read the data to the correct place in our buffer
-  memcpy(g_audio_capture_buffer + capture_index, (void *)g_audio_sample_buffer, sizeof(int16_t)*number_of_samples);
-
-  // Clear the interrupt request.
-  dma_hw->ints0 = 1u << dma_chan;
-  // Give the channel a new wave table entry to read from, and re-trigger it
-  dma_channel_set_write_addr(dma_chan, g_audio_sample_buffer, true);
-
+  const int32_t time_in_ms = g_latest_audio_timestamp
+    + (number_of_samples / (kAudioSampleFrequency / 1000));
+  // when this changes the model knows to run
   g_latest_audio_timestamp = time_in_ms;
 }
 
