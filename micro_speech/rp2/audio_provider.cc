@@ -40,7 +40,8 @@ constexpr int kAudioCaptureBufferSize = NSAMP * 1;
 uint32_t g_audio_capture_buffer[2][kAudioCaptureBufferSize];
 int16_t g_audio_sample_buffer[kAudioCaptureBufferSize];
 // A buffer that holds our output
-int16_t g_audio_output_buffer[kMaxAudioSampleSize];
+//int16_t g_audio_output_buffer[kMaxAudioSampleSize];
+int16_t g_audio_output_buffer[kAudioCaptureBufferSize];
 // Mark as volatile so we can check in a while loop to see if
 // any samples have arrived yet.
 volatile int32_t g_latest_audio_timestamp = 0;
@@ -155,8 +156,8 @@ TfLiteStatus GetAudioSamples(tflite::ErrorReporter* error_reporter,
   // often enough and the buffer is large enough that this call will be made
   // before that happens.
 
-  const int16_t kAdcSampleDC = 2048;
-  const int16_t kAdcSampleGain = 20;
+  const int16_t kAdcSampleDC = 0; // this is done in capture samples now
+  const int16_t kAdcSampleGain = 1; // set to 1 incase it wants including
 
   // Determine the index, in the history of all samples, of the first
   // sample we want
@@ -164,28 +165,34 @@ TfLiteStatus GetAudioSamples(tflite::ErrorReporter* error_reporter,
   const int start_offset = start_ms * (kAudioSampleFrequency / 1000);
   // Determine how many samples we want in total
   const int duration_sample_count = duration_ms * (kAudioSampleFrequency / 1000);
-  for (int i = 0; i < duration_sample_count; ++i) {
-    // For each sample, transform its index in the history of all samples into
-    // its index in g_audio_capture_buffer
-    const int capture_index = (start_offset + i) % kAudioCaptureBufferSize;
-    const int32_t capture_value = g_audio_capture_buffer[capture_index];
-    int32_t output_value = capture_value - kAdcSampleDC;
-    //
-    output_value *= kAdcSampleGain;
-    //printf("%d, \n", output_value);
-    if (output_value < std::numeric_limits<int16_t>::min()) {
-      output_value = std::numeric_limits<int16_t>::min();
-    }
-    if (output_value > std::numeric_limits<int16_t>::max()) {
-      output_value = std::numeric_limits<int16_t>::max();
-    }
-    // Write the sample to the output buffer
-    g_audio_output_buffer[i] = output_value;
-    //printf("%d\n", output_value);
-    //g_audio_output_buffer[i] = capture_value;
+
+  //loop not required anymore
+  //for (int i = 0; i < duration_sample_count; ++i) {
+  //  // For each sample, transform its index in the history of all samples into
+  //  // its index in g_audio_capture_buffer
+  //  const int capture_index = (start_offset + i) % kAudioCaptureBufferSize;
+  //  const int32_t capture_value = g_audio_capture_buffer[capture_index];
+  //  int32_t output_value = capture_value - kAdcSampleDC;
+  //  //
+  //  output_value *= kAdcSampleGain;
+  //  //printf("%d, \n", output_value);
+  //  if (output_value < std::numeric_limits<int16_t>::min()) {
+  //    output_value = std::numeric_limits<int16_t>::min();
+  //  }
+  //  if (output_value > std::numeric_limits<int16_t>::max()) {
+  //    output_value = std::numeric_limits<int16_t>::max();
+  //  }
+  //  // Write the sample to the output buffer
+  //  g_audio_output_buffer[i] = output_value;
+  //  //printf("%d\n", output_value);
+  //  //g_audio_output_buffer[i] = capture_value;
+  //}
+  for (int i =0; i < NSAMP; i ++) {
+    g_audio_output_buffer[i] = g_audio_sample_buffer[i];
   }
   // Set pointers to provide access to the audio
-  *audio_samples_size = kMaxAudioSampleSize;
+  //*audio_samples_size = kMaxAudioSampleSize;
+  *audio_samples_size = kAudioCaptureBufferSize;
   *audio_samples = g_audio_output_buffer;
 
   return kTfLiteOk;
