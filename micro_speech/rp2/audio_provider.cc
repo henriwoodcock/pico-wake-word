@@ -97,7 +97,7 @@ void setup() {
   cfg = dma_channel_get_default_config(dma_chan);
 
   // Reading from constant address, writing to incrementing byte addresses
-  channel_config_set_transfer_data_size(&cfg, DMA_SIZE_16);
+  channel_config_set_transfer_data_size(&cfg, DMA_SIZE_32);
   channel_config_set_read_increment(&cfg, false);
   channel_config_set_write_increment(&cfg, true);
 
@@ -105,10 +105,10 @@ void setup() {
   channel_config_set_dreq(&cfg, DREQ_ADC);
 
   dma_channel_configure(dma_chan, &cfg,
-			NULL,    // dst
+			g_audio_capture_buffer[capture_index],    // dst
 			&adc_hw->fifo,  // src
 			NSAMP,          // transfer count
-			false            // start immediately
+			false            // don't start immediately
 	);
 
   // Tell the DMA to raise IRQ line 0 when the channel finishes a block
@@ -118,6 +118,9 @@ void setup() {
   irq_set_enabled(DMA_IRQ_0, true);
 
   adc_run(true); //start running the adc
+
+  dma_channel_transfer_to_buffer_now(dma_chan, capture_buf[capture_index],
+    NSAMP);
 }
 
 TfLiteStatus InitAudioRecording(tflite::ErrorReporter* error_reporter) {
