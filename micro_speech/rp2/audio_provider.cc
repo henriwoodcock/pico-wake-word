@@ -15,7 +15,7 @@
 // 9600  = 5,000 Hz
 // -> 3000 = 16,000 Hz
 #define CLOCK_DIV 3000 //16Khz
-
+#define CAPTURE_FREQUENCY 16000
 // Channel 0 is GPIO26
 #define ADC_PIN 26
 #define CAPTURE_CHANNEL 0
@@ -89,7 +89,7 @@ void setup() {
 		 );
 
   // set sample rate
-  adc_set_clkdiv(CLOCK_DIV);
+  adc_set_clkdiv((48000000 / CAPTURE_FREQUENCY) - 1);
 
   sleep_ms(1000);
   // Set up the DMA to start transferring data as soon as it appears in FIFO
