@@ -57,9 +57,9 @@ void CaptureSamples() {
   capture_index = (capture_index + 1) % 2;
   // Give the channel a new wave table entry to read from, and re-trigger it
   dma_channel_transfer_to_buffer_now(dma_chan,
-    g_audio_sample_buffer[capture_index], NSAMP);
+    g_audio_sample_buffer[capture_index], NSAMP * 4);
   // data processing
-  const int number_of_samples = NSAMP;
+  const int number_of_samples = NSAMP * 4;
   // Calculate what timestamp the last audio sample represents
   const int32_t time_in_ms = g_latest_audio_timestamp + (number_of_samples / (kAudioSampleFrequency / 1000));
   // Determine the index, in the history of all samples, of the last sample
