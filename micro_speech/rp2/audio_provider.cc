@@ -31,7 +31,7 @@ namespace {
 dma_channel_config cfg;
 uint dma_chan;
 
-uint16_t g_audio_sample_buffer[2][NSAMP];
+uint16_t g_audio_sample_buffer[2][NSAMP * 4];
 // tflite micro settings
 bool g_is_audio_initialized = false;
 volatile int capture_index = 0;
@@ -65,9 +65,9 @@ void CaptureSamples() {
   // Determine the index, in the history of all samples, of the last sample
   const int32_t start_sample_offset = g_latest_audio_timestamp * (kAudioSampleFrequency / 1000);
   // Determine the index of this sample in our ring buffer
-  const int capture_index = start_sample_offset % kAudioCaptureBufferSize;
+  const int array_capture_index = start_sample_offset % kAudioCaptureBufferSize;
   // Read the data to the correct place in our buffer
-  memcpy(g_audio_capture_buffer + capture_index,
+  memcpy(g_audio_capture_buffer + array_capture_index,
     (void *)g_audio_sample_buffer[read_index],
     sizeof(int16_t)*number_of_samples);
   // when this changes the nn runs
@@ -124,6 +124,7 @@ void setup() {
 
 TfLiteStatus InitAudioRecording(tflite::ErrorReporter* error_reporter) {
   // Hook up the callback that will be called with each sample
+  printf("initializing\n");
   setup();
   // Manually call the handler once, to trigger the first transfer
   CaptureSamples();
@@ -166,8 +167,8 @@ TfLiteStatus GetAudioSamples(tflite::ErrorReporter* error_reporter,
   for (int i = 0; i < duration_sample_count; ++i) {
     // For each sample, transform its index in the history of all samples into
     // its index in g_audio_capture_buffer
-    const int capture_index = (start_offset + i) % kAudioCaptureBufferSize;
-    const int32_t capture_value = g_audio_capture_buffer[capture_index];
+    const int array_capture_index = (start_offset + i) % kAudioCaptureBufferSize;
+    const int32_t capture_value = g_audio_capture_buffer[array_capture_index];
     int32_t output_value = capture_value - 0x7ff;
     //
     output_value *= kAdcSampleGain;
