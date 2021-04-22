@@ -162,9 +162,9 @@ TfLiteStatus GetAudioSamples(tflite::ErrorReporter* error_reporter,
   // Determine the index, in the history of all samples, of the first
   // sample we want
   //printf("getting audio samples\n");
-  const int start_offset = start_ms * (kAudioSampleFrequency / 1000);
+  //const int start_offset = start_ms * (kAudioSampleFrequency / 1000);
   // Determine how many samples we want in total
-  const int duration_sample_count = duration_ms * (kAudioSampleFrequency / 1000);
+  //const int duration_sample_count = duration_ms * (kAudioSampleFrequency / 1000);
 
   //loop not required anymore
   //for (int i = 0; i < duration_sample_count; ++i) {
@@ -187,9 +187,6 @@ TfLiteStatus GetAudioSamples(tflite::ErrorReporter* error_reporter,
   //  //printf("%d\n", output_value);
   //  //g_audio_output_buffer[i] = capture_value;
   //}
-  for (int i =0; i < NSAMP; i ++) {
-    g_audio_output_buffer[i] = g_audio_sample_buffer[i];
-  }
   memcpy(*audio_samples, g_audio_output_buffer, sizeof(int16_t) * kAudioCaptureBufferSize);
   // Set pointers to provide access to the audio
   //*audio_samples_size = kMaxAudioSampleSize;
