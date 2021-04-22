@@ -190,6 +190,7 @@ TfLiteStatus GetAudioSamples(tflite::ErrorReporter* error_reporter,
   for (int i =0; i < NSAMP; i ++) {
     g_audio_output_buffer[i] = g_audio_sample_buffer[i];
   }
+  memcpy(*audio_samples, g_audio_output_buffer, sizeof(int16_t) * kAudioCaptureBufferSize);
   // Set pointers to provide access to the audio
   //*audio_samples_size = kMaxAudioSampleSize;
   *audio_samples_size = kAudioCaptureBufferSize;
