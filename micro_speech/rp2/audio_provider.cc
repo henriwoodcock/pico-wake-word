@@ -23,7 +23,7 @@
 // BE CAREFUL: anything over about 9000 here will cause things
 // to silently break. The code will compile and upload, but due
 // to memory issues nothing will work properly
-#define NSAMP 1024
+#define NSAMP 256 // similar to arduino example
 #define BUFFER_SIZE 16000
 
 namespace {
@@ -31,12 +31,12 @@ namespace {
 dma_channel_config cfg;
 uint dma_chan;
 
-uint16_t g_audio_sample_buffer[2][NSAMP * 4];
+uint16_t g_audio_sample_buffer[2][NSAMP];
 // tflite micro settings
 bool g_is_audio_initialized = false;
 volatile int capture_index = 0;
 // An internal buffer able to fit 16x our sample size
-constexpr int kAudioCaptureBufferSize = NSAMP * 16;
+constexpr int kAudioCaptureBufferSize = NSAMP * 16 * 2;
 int16_t g_audio_capture_buffer[kAudioCaptureBufferSize];
 // A buffer that holds our output
 int16_t g_audio_output_buffer[kMaxAudioSampleSize];
@@ -57,9 +57,9 @@ void CaptureSamples() {
   capture_index = (capture_index + 1) % 2;
   // Give the channel a new wave table entry to read from, and re-trigger it
   dma_channel_transfer_to_buffer_now(dma_chan,
-    g_audio_sample_buffer[capture_index], NSAMP * 4);
+    g_audio_sample_buffer[capture_index], NSAMP);
   // data processing
-  const int number_of_samples = NSAMP * 4;
+  const int number_of_samples = NSAMP;
   // Calculate what timestamp the last audio sample represents
   const int32_t time_in_ms = g_latest_audio_timestamp + (number_of_samples / (kAudioSampleFrequency / 1000));
   // Determine the index, in the history of all samples, of the last sample
@@ -106,7 +106,7 @@ void setup() {
   dma_channel_configure(dma_chan, &cfg,
 			NULL,    // dst
 			&adc_hw->fifo,  // src
-			NSAMP * 4,          // transfer count
+			NSAMP,          // transfer count
 			false            // start immediately
 	);
 
@@ -119,7 +119,7 @@ void setup() {
   adc_run(true); //start running the adc
 
   dma_channel_transfer_to_buffer_now(dma_chan, g_audio_sample_buffer[capture_index],
-    NSAMP * 4);
+    NSAMP);
 }
 
 TfLiteStatus InitAudioRecording(tflite::ErrorReporter* error_reporter) {
