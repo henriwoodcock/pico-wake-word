@@ -106,7 +106,7 @@ void setup() {
   dma_channel_configure(dma_chan, &cfg,
 			NULL,    // dst
 			&adc_hw->fifo,  // src
-			NSAMP,          // transfer count
+			NSAMP * 4,          // transfer count
 			false            // start immediately
 	);
 
@@ -119,12 +119,11 @@ void setup() {
   adc_run(true); //start running the adc
 
   dma_channel_transfer_to_buffer_now(dma_chan, g_audio_sample_buffer[capture_index],
-    NSAMP);
+    NSAMP * 4);
 }
 
 TfLiteStatus InitAudioRecording(tflite::ErrorReporter* error_reporter) {
   // Hook up the callback that will be called with each sample
-  printf("initializing\n");
   setup();
   // Manually call the handler once, to trigger the first transfer
   CaptureSamples();
