@@ -14,8 +14,7 @@
 // 960   = 50,000 Hz
 // 9600  = 5,000 Hz
 // -> 3000 = 16,000 Hz
-#define CLOCK_DIV 3000 //16Khz
-
+#define CAPTURE_FREQUENCY 16000
 // Channel 0 is GPIO26
 #define ADC_PIN 26
 #define CAPTURE_CHANNEL 0
@@ -32,9 +31,10 @@ namespace {
 dma_channel_config cfg;
 uint dma_chan;
 
-uint16_t g_audio_sample_buffer[NSAMP];
+uint16_t g_audio_sample_buffer[2][NSAMP];
 // tflite micro settings
 bool g_is_audio_initialized = false;
+volatile int capture_index = 0;
 // An internal buffer able to fit 16x our sample size
 constexpr int kAudioCaptureBufferSize = NSAMP * 16;
 int16_t g_audio_capture_buffer[kAudioCaptureBufferSize];
@@ -49,12 +49,15 @@ volatile int32_t g_latest_audio_timestamp = 0;
 //this next function is the dma interupt
 void CaptureSamples() {
   //reset the interrupt request first so you do not lose an interupt
-
-
-  //printf("Interupt\n");
-  // reset the fifo
-  //adc_fifo_drain();
-
+  // Clear the interrupt request.
+  dma_hw->ints0 = 1u << dma_chan;
+  // get the current capture index
+  int read_index = capture_index;
+  // get the next capture index to send the dma to start
+  capture_index = (capture_index + 1) % 2;
+  // Give the channel a new wave table entry to read from, and re-trigger it
+  dma_channel_transfer_to_buffer_now(dma_chan,
+    g_audio_sample_buffer[capture_index], NSAMP);
   // data processing
   const int number_of_samples = NSAMP;
   // Calculate what timestamp the last audio sample represents
@@ -64,13 +67,10 @@ void CaptureSamples() {
   // Determine the index of this sample in our ring buffer
   const int capture_index = start_sample_offset % kAudioCaptureBufferSize;
   // Read the data to the correct place in our buffer
-  memcpy(g_audio_capture_buffer + capture_index, (void *)g_audio_sample_buffer, sizeof(int16_t)*number_of_samples);
-
-  // Clear the interrupt request.
-  dma_hw->ints0 = 1u << dma_chan;
-  // Give the channel a new wave table entry to read from, and re-trigger it
-  dma_channel_set_write_addr(dma_chan, g_audio_sample_buffer, true);
-
+  memcpy(g_audio_capture_buffer + capture_index,
+    (void *)g_audio_sample_buffer[read_index],
+    sizeof(int16_t)*number_of_samples);
+  // when this changes the nn runs
   g_latest_audio_timestamp = time_in_ms;
 }
 
@@ -88,7 +88,7 @@ void setup() {
 		 );
 
   // set sample rate
-  adc_set_clkdiv(CLOCK_DIV);
+  adc_set_clkdiv((48000000 / CAPTURE_FREQUENCY) - 1);
 
   sleep_ms(1000);
   // Set up the DMA to start transferring data as soon as it appears in FIFO
@@ -117,6 +117,9 @@ void setup() {
   irq_set_enabled(DMA_IRQ_0, true);
 
   adc_run(true); //start running the adc
+
+  dma_channel_transfer_to_buffer_now(dma_chan, g_audio_sample_buffer[capture_index],
+    NSAMP);
 }
 
 TfLiteStatus InitAudioRecording(tflite::ErrorReporter* error_reporter) {
@@ -151,8 +154,8 @@ TfLiteStatus GetAudioSamples(tflite::ErrorReporter* error_reporter,
   // often enough and the buffer is large enough that this call will be made
   // before that happens.
 
-  const int16_t kAdcSampleDC = 2048;
-  const int16_t kAdcSampleGain = 20;
+  const int16_t kAdcSampleDC = 0;
+  const int16_t kAdcSampleGain = 1;
 
   // Determine the index, in the history of all samples, of the first
   // sample we want
@@ -165,7 +168,7 @@ TfLiteStatus GetAudioSamples(tflite::ErrorReporter* error_reporter,
     // its index in g_audio_capture_buffer
     const int capture_index = (start_offset + i) % kAudioCaptureBufferSize;
     const int32_t capture_value = g_audio_capture_buffer[capture_index];
-    int32_t output_value = capture_value - kAdcSampleDC;
+    int32_t output_value = capture_value - 0x7ff;
     //
     output_value *= kAdcSampleGain;
     //printf("%d, \n", output_value);
