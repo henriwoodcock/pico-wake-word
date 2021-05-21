@@ -12,6 +12,8 @@ limitations under the License.
 #include "audio_provider.h"
 #include "micro_features/micro_model_settings.h"
 
+#include "pico/analog_microphone.h"
+
 #include "pico/stdlib.h"
 #include "hardware/adc.h"
 #include "hardware/dma.h"
@@ -33,26 +35,33 @@ int16_t g_audio_output_buffer[kMaxAudioSampleSize];
 // Mark as volatile so we can check in a while loop to see if
 // any samples have arrived yet.
 volatile int32_t g_latest_audio_timestamp = 0;
+volatile int samples_read = 0;
 
-dma_channel_config cfg;
-uint dma_chan;
-uint16_t g_audio_sample_buffer[2][ADC_BUFFER_SIZE];
-volatile int dma_capture_index = 0;
+const struct analog_microphone_config config = {
+    // GPIO to use for input, must be ADC compatible (GPIO 26 - 28)
+    .gpio = ADC_PIN + CAPTURE_CHANNEL,
+
+    // bias voltage of microphone in volts
+    .bias_voltage = 1.25,
+
+    // sample rate in Hz
+    .sample_rate = 16000,
+
+    // number of samples to buffer
+    .sample_buffer_size = ADC_BUFFER_SIZE,
+};
+
+int16_t g_audio_sample_buffer[ADC_BUFFER_SIZE];
 
 } // namespace
 
 void CaptureSamples() {
-  // Clear the interrupt request.
-  dma_hw->ints0 = 1u << dma_chan;
-  // get the current capture index
-  int read_index = dma_capture_index;
-  // get the next capture index to send the dma to start
-  dma_capture_index = (dma_capture_index + 1) % 2;
-  // Give the channel a new wave table entry to read from, and re-trigger it
-  dma_channel_transfer_to_buffer_now(dma_chan, g_audio_sample_buffer[dma_capture_index], ADC_BUFFER_SIZE);
-
-
+  // callback from library when all the samples in the library
+  // internal sample buffer are ready for reading
+  samples_read = analog_microphone_read(g_audio_sample_buffer, ADC_BUFFER_SIZE);
   // This is how many bytes of new data we have each time this is called
+  int number_of_samples = samples_read;
+  int samples_read = 0;
   const int number_of_samples = ADC_BUFFER_SIZE;
   // Calculate what timestamp the last audio sample represents
   const int32_t time_in_ms =
@@ -66,69 +75,31 @@ void CaptureSamples() {
   // Read the data to the correct place in our buffer
   // PDM.read(g_audio_capture_buffer + capture_index, DEFAULT_PDM_BUFFER_SIZE);
   int16_t* out = g_audio_capture_buffer + capture_index;
-  uint16_t* in = g_audio_sample_buffer[read_index];
+  uint16_t* in = g_audio_sample_buffer;
 
-  for (int i = 0; i < ADC_BUFFER_SIZE; i++) {
-    *out++ = (*in++ - ADC_BIAS);
+  for (int i = 0; i < number_of_samples; i++) {
+    *out++ = *in++;
   }
-
   // This is how we let the outside world know that new audio data has arrived.
   g_latest_audio_timestamp = time_in_ms;
 }
 
 TfLiteStatus InitAudioRecording(tflite::ErrorReporter* error_reporter) {
-  // Hook up the callback that will be called with each sample
+  // initialize the analog microphone
+  if (analog_microphone_init(&config) < 0) {
+      printf("analog microphone initialization failed!\n");
+      while (1) { tight_loop_contents(); }
+  }
 
-  adc_gpio_init(ADC_PIN + CAPTURE_CHANNEL);
+  // set callback that is called when all the samples in the library
+  // internal sample buffer are ready for reading
+  analog_microphone_set_samples_ready_handler(CaptureSamples);
 
-  adc_init();
-  adc_select_input(CAPTURE_CHANNEL);
-  adc_fifo_setup(
-		 true,    // Write each completed conversion to the sample FIFO
-		 true,    // Enable DMA data request (DREQ)
-		 1,       // DREQ (and IRQ) asserted when at least 1 sample present
-		 false,   // We won't see the ERR bit because of 8 bit reads; disable.
-		 false     // Shift each sample to 8 bits when pushing to FIFO
-		 );
-
-  // set sample rate
-  adc_set_clkdiv((48000000 / kAudioSampleFrequency) - 1);
-
-  sleep_ms(1000);
-  // Set up the DMA to start transferring data as soon as it appears in FIFO
-  uint dma_chan = dma_claim_unused_channel(true);
-  cfg = dma_channel_get_default_config(dma_chan);
-
-  // Reading from constant address, writing to incrementing byte addresses
-  channel_config_set_transfer_data_size(&cfg, DMA_SIZE_16);
-  channel_config_set_read_increment(&cfg, false);
-  channel_config_set_write_increment(&cfg, true);
-
-  // Pace transfers based on availability of ADC samples
-  channel_config_set_dreq(&cfg, DREQ_ADC);
-
-  dma_channel_configure(dma_chan, &cfg,
-			NULL,    // dst
-			&adc_hw->fifo,  // src
-			ADC_BUFFER_SIZE,          // transfer count
-			false            // start immediately
-	);
-
-  // Tell the DMA to raise IRQ line 0 when the channel finishes a block
-  dma_channel_set_irq0_enabled(dma_chan, true);
-  // Configure the processor to run dma_handler() when DMA IRQ 0 is asserted
-  irq_set_exclusive_handler(DMA_IRQ_0, CaptureSamples);
-  irq_set_enabled(DMA_IRQ_0, true);
-
-  adc_run(true); //start running the adc
-
-  dma_channel_transfer_to_buffer_now(dma_chan, g_audio_sample_buffer[dma_capture_index], ADC_BUFFER_SIZE);
-
-
-  // PDM.onReceive(CaptureSamples);
-  // // Start listening for audio: MONO @ 16KHz with gain at 20
-  // PDM.begin(1, kAudioSampleFrequency);
-  // PDM.setGain(20);
+  // start capturing data from the analog microphone
+  if (analog_microphone_start() < 0) {
+      printf("PDM microphone start failed!\n");
+      while (1) { tight_loop_contents();  }
+  }
 
   // Block until we have our first audio sample
   while (!g_latest_audio_timestamp) {

@@ -15,17 +15,17 @@ set(CMAKE_CXX_STANDARD 11)
 # initialize the Pico SDK
 pico_sdk_init()
 
-add_executable(micro_speech_mic "")
+add_executable(pico_micro_speech "")
 
 set(PICO_TFLMICRO_MICRO_SPEECH_PATH ${CMAKE_CURRENT_LIST_DIR}/lib/pico-tflmicro/examples/micro_speech)
 
-target_include_directories(micro_speech_mic
+target_include_directories(pico_micro_speech
   PRIVATE
   ${PICO_TFLMICRO_MICRO_SPEECH_PATH}/.
 )
 
 set_target_properties(
-  micro_speech_mic
+  pico_micro_speech
   PROPERTIES
   COMPILE_FLAGS -fno-rtti
   COMPILE_FLAGS -fno-exceptions
@@ -33,7 +33,7 @@ set_target_properties(
   COMPILE_FLAGS -nostdlib
 )
 
-target_sources(micro_speech_mic
+target_sources(pico_micro_speech
   PRIVATE
   ${PICO_TFLMICRO_MICRO_SPEECH_PATH}/tensorflow/lite/experimental/microfrontend/lib/fft.cpp
   ${PICO_TFLMICRO_MICRO_SPEECH_PATH}/tensorflow/lite/experimental/microfrontend/lib/fft_util.cpp
@@ -93,17 +93,18 @@ target_sources(micro_speech_mic
 )
 
 target_link_libraries(
-  micro_speech_mic
+  pico_micro_speech
   pico-tflmicro
   hardware_adc
   hardware_dma
   hardware_pwm
+  pico_analog_microphone
 )
 
-pico_add_extra_outputs(micro_speech_mic)
+pico_add_extra_outputs(pico_micro_speech)
 
 # enable usb output, disable uart output
-pico_enable_stdio_usb(micro_speech_mic 1)
-pico_enable_stdio_uart(micro_speech_mic 0)
+pico_enable_stdio_usb(pico_micro_speech 1)
+pico_enable_stdio_uart(pico_micro_speech 0)
 
 add_subdirectory("lib/pico-tflmicro" EXCLUDE_FROM_ALL)
