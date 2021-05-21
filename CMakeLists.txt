@@ -51,9 +51,9 @@ target_sources(pico_micro_speech
   ${PICO_TFLMICRO_MICRO_SPEECH_PATH}/tensorflow/lite/experimental/microfrontend/lib/window.c
   ${PICO_TFLMICRO_MICRO_SPEECH_PATH}/tensorflow/lite/experimental/microfrontend/lib/window_util.c
   ${CMAKE_CURRENT_LIST_DIR}/src/audio_provider.cc
-  ${CMAKE_CURRENT_LIST_DIR}/src/command_responder.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/src/command_responder.cc
   ${PICO_TFLMICRO_MICRO_SPEECH_PATH}/feature_provider.cpp
-  ${PICO_TFLMICRO_MICRO_SPEECH_PATH}/main.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
   ${PICO_TFLMICRO_MICRO_SPEECH_PATH}/main_functions.cpp
   ${PICO_TFLMICRO_MICRO_SPEECH_PATH}/micro_features/micro_features_generator.cpp
   ${PICO_TFLMICRO_MICRO_SPEECH_PATH}/micro_features/micro_model_settings.cpp
@@ -108,3 +108,4 @@ pico_enable_stdio_usb(pico_micro_speech 1)
 pico_enable_stdio_uart(pico_micro_speech 0)
 
 add_subdirectory("lib/pico-tflmicro" EXCLUDE_FROM_ALL)
+add_subdirectory("lib/pico-microphone" EXCLUDE_FROM_ALL)

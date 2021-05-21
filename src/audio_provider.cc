@@ -12,12 +12,13 @@ limitations under the License.
 #include "audio_provider.h"
 #include "micro_features/micro_model_settings.h"
 
+#include <stdio.h>
+
+extern "C" {
 #include "pico/analog_microphone.h"
+}
 
 #include "pico/stdlib.h"
-#include "hardware/adc.h"
-#include "hardware/dma.h"
-#include "hardware/irq.h"
 
 #define ADC_PIN 26
 #define CAPTURE_CHANNEL 0
@@ -35,7 +36,6 @@ int16_t g_audio_output_buffer[kMaxAudioSampleSize];
 // Mark as volatile so we can check in a while loop to see if
 // any samples have arrived yet.
 volatile int32_t g_latest_audio_timestamp = 0;
-volatile int samples_read = 0;
 
 const struct analog_microphone_config config = {
     // GPIO to use for input, must be ADC compatible (GPIO 26 - 28)
@@ -50,18 +50,10 @@ const struct analog_microphone_config config = {
     // number of samples to buffer
     .sample_buffer_size = ADC_BUFFER_SIZE,
 };
-
-int16_t g_audio_sample_buffer[ADC_BUFFER_SIZE];
-
 } // namespace
 
 void CaptureSamples() {
-  // callback from library when all the samples in the library
-  // internal sample buffer are ready for reading
-  samples_read = analog_microphone_read(g_audio_sample_buffer, ADC_BUFFER_SIZE);
-  // This is how many bytes of new data we have each time this is called
-  int number_of_samples = samples_read;
-  int samples_read = 0;
+  // This is how many samples are read in
   const int number_of_samples = ADC_BUFFER_SIZE;
   // Calculate what timestamp the last audio sample represents
   const int32_t time_in_ms =
@@ -74,12 +66,7 @@ void CaptureSamples() {
   const int capture_index = start_sample_offset % kAudioCaptureBufferSize;
   // Read the data to the correct place in our buffer
   // PDM.read(g_audio_capture_buffer + capture_index, DEFAULT_PDM_BUFFER_SIZE);
-  int16_t* out = g_audio_capture_buffer + capture_index;
-  uint16_t* in = g_audio_sample_buffer;
-
-  for (int i = 0; i < number_of_samples; i++) {
-    *out++ = *in++;
-  }
+  analog_microphone_read(g_audio_capture_buffer + capture_index, ADC_BUFFER_SIZE);
   // This is how we let the outside world know that new audio data has arrived.
   g_latest_audio_timestamp = time_in_ms;
 }
@@ -87,8 +74,9 @@ void CaptureSamples() {
 TfLiteStatus InitAudioRecording(tflite::ErrorReporter* error_reporter) {
   // initialize the analog microphone
   if (analog_microphone_init(&config) < 0) {
-      printf("analog microphone initialization failed!\n");
-      while (1) { tight_loop_contents(); }
+    TF_LITE_REPORT_ERROR(error_reporter,
+      "analog microphone initialization failed!");
+    while (1) { tight_loop_contents(); }
   }
 
   // set callback that is called when all the samples in the library
@@ -97,8 +85,8 @@ TfLiteStatus InitAudioRecording(tflite::ErrorReporter* error_reporter) {
 
   // start capturing data from the analog microphone
   if (analog_microphone_start() < 0) {
-      printf("PDM microphone start failed!\n");
-      while (1) { tight_loop_contents();  }
+    TF_LITE_REPORT_ERROR(error_reporter, "Analog microphone start failed");
+    while (1) { tight_loop_contents();  }
   }
 
   // Block until we have our first audio sample
