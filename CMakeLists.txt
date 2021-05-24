@@ -95,10 +95,10 @@ target_sources(pico_micro_speech_analog
 target_link_libraries(
   pico_micro_speech_analog
   pico-tflmicro
+  pico_analog_microphone
   hardware_adc
   hardware_dma
   hardware_pwm
-  pico_analog_microphone
 )
 
 pico_add_extra_outputs(pico_micro_speech_analog)
@@ -188,11 +188,11 @@ target_sources(pico_micro_speech_pdm
 target_link_libraries(
   pico_micro_speech_pdm
   pico-tflmicro
+  pico_pdm_microphone
   hardware_adc
   hardware_dma
   hardware_pwm
   hardware_pio
-  pico_pdm_microphone
 )
 
 pico_add_extra_outputs(pico_micro_speech_pdm)
@@ -202,4 +202,4 @@ pico_enable_stdio_usb(pico_micro_speech_pdm 1)
 pico_enable_stdio_uart(pico_micro_speech_pdm 0)
 
 add_subdirectory("lib/pico-tflmicro" EXCLUDE_FROM_ALL)
-add_subdirectory("lib/pico-microphone" EXCLUDE_FROM_ALL)
+add_subdirectory("lib/pico-microphone")
