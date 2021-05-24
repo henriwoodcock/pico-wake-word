@@ -1,0 +1,9 @@
+[submodule "lib/pico-tflmicro"]
+	path = lib/pico-tflmicro
+	url = https://github.com/raspberrypi/pico-tflmicro.git
+[submodule "lib/pico-microphone"]
+	path = lib/pico-microphone
+	url = https://github.com/sandeepmistry/pico-microphone.git
+[submodule "lib/pico-sdk"]
+	path = lib/pico-sdk
+	url = https://github.com/raspberrypi/pico-sdk
