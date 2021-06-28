@@ -217,20 +217,29 @@ building any other Pico application.
     cd pico-wake-word
     ```
 
-2. Make a build directory
+2. Initialize the submodules
+
+    ```
+    git submodule init
+    cd lib/pico-sdk
+    git submodule init
+    cd ../../
+    ```
+
+3. Make a build directory
 
     ```
     mkdir build
     ```
 
-3. Generate the Makefiles
+4. Generate the Makefiles
 
     ```
     cd build
     cmake ..
     ```
 
-4. Finally run the Makefile
+5. Finally run the Makefile
 
     ```
     make -j8
